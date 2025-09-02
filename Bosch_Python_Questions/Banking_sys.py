@@ -57,6 +57,29 @@ class CurrentAccount(BankAccount):
     def __str__(self):
         return super().__str__() + f", Current Account with overdraft limit: Rs.{self.overdraft_limit:.2f}"
 
+class FixedDepositAccount(BankAccount):
+    def __init__(self, account_number, account_holder, balance=0.0, lock_in_period_months=12, interest_rate=0.05):
+        super().__init__(account_number, account_holder, balance)
+        self.lock_in_period = timedelta(days=lock_in_period_months * 5)
+        self.interest_rate = interest_rate
+        self.start_date = datetime.now()
+
+    def withdraw(self, amount):
+        if datetime.now() < self.start_date + self.lock_in_period:
+            raise ValueError("Cannot withdraw during lock-in period.")
+        super().withdraw(amount)
+
+    def apply_interest(self):
+        interest = self.balance * self.interest_rate
+        self.balance += interest
+        print(f"Applied fixed deposit interest Rs.{interest:.2f}. New balance: Rs.{self.balance:.2f}")
+
+    def __str__(self):
+        lock_in_end = self.start_date + self.lock_in_period
+        return (super().__str__() +
+                f", Fixed Deposit Account with interest rate: {self.interest_rate * 100:.2f}%, "
+                f"lock-in ends on {lock_in_end.strftime('%Y-%m-%d')}")
+    
 class Bank:
     def __init__(self):
         self.accounts = {}
@@ -87,17 +110,21 @@ def main():
 
     savings = SavingsAccount("1001", "Nagaraju", 1000.0)
     current = CurrentAccount("1002", "Kumar", 500.0, overdraft_limit=300.0)
+    fixed_deposit = FixedDepositAccount("1003", "Gupta", 2000.0, lock_in_period_months=6)
 
     bank.add_account(savings)
     bank.add_account(current)
+    bank.add_account(fixed_deposit)
 
     print("\n--- Initial Account Details ---")
     print(savings)
     print(current)
+    print(fixed_deposit)
 
     print("\n")
     savings.deposit(500)
     current.deposit(200)
+    fixed_deposit.deposit(500)
 
     print("\n")
     try:
@@ -110,8 +137,14 @@ def main():
     except ValueError as e:
         print(e)
 
+    try:
+        fixed_deposit.withdraw(100) 
+    except ValueError as e:
+        print(e)
+
     print("\n")
     savings.apply_interest()
+    fixed_deposit.apply_interest()
 
     print("\n")
     try:
@@ -122,6 +155,7 @@ def main():
     print("\n--- Final Account Details ---")
     print(savings)
     print(current)
+    print(fixed_deposit)
 
 if __name__ == "__main__":
     main()
